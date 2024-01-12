@@ -9,7 +9,7 @@ def read_jil_file(file_path):
         current_job = None
         job_content = ""
         for vline in file:
-            line=vline.strip()
+            line = vline.lstrip()
             if line.startswith('insert_job'):
                 if current_job:
                     jobs[current_job] = job_content
@@ -23,27 +23,31 @@ def read_jil_file(file_path):
     return jobs
 
 def compare_jobs(jobs1, jobs2):
-    """ Compare deux ensembles de jobs et retourne les jobs manquants dans jobs1 avec leurs dépendances. """
+    """ Compare deux ensembles de jobs et retourne les jobs manquants et ceux avec des dépendances à mettre à jour. """
     missing_jobs = {}
+    jobs_with_updated_conditions = {}
+
     for job, content in jobs2.items():
         normalized_job = normalize_job_name(job)
         if normalized_job not in jobs1:
             missing_jobs[normalized_job] = content
-            # Ajouter également les dépendances des jobs manquants
+        else:
             if 'condition' in content:
                 for line in content.split('\n'):
                     if 'condition' in line:
                         dependencies = line.split(':')[1].split()
                         for dep in dependencies:
                             normalized_dep = normalize_job_name(dep)
-                            if normalized_dep in jobs2 and normalized_dep not in missing_jobs:
-                                missing_jobs[normalized_dep] = jobs2[normalized_dep]
-    return missing_jobs
+                            if normalized_dep in jobs2 and normalized_dep not in jobs1:
+                                jobs_with_updated_conditions[normalized_job] = f"update_job: {normalized_job}\n{line}\n"
+    return missing_jobs, jobs_with_updated_conditions
 
-def write_jil_file(missing_jobs, output_file):
-    """ Écrit les jobs manquants et leurs dépendances dans un fichier JIL. """
+def write_jil_file(missing_jobs, jobs_with_updated_conditions, output_file):
+    """ Écrit les jobs manquants et les mises à jour de dépendances dans un fichier JIL. """
     with open(output_file, 'w') as file:
         for job, content in missing_jobs.items():
+            file.write(content + "\n\n")
+        for job, content in jobs_with_updated_conditions.items():
             file.write(content + "\n\n")
 
 # Chemins vers vos fichiers JIL
@@ -54,11 +58,11 @@ jil_file_ref = 'chemin/vers/ref.jil'
 jobs_target = read_jil_file(jil_file_target)
 jobs_ref = read_jil_file(jil_file_ref)
 
-# Trouver les jobs manquants dans target avec leurs dépendances
-missing_jobs = compare_jobs(jobs_target, jobs_ref)
+# Trouver les jobs manquants et ceux avec des dépendances à mettre à jour
+missing_jobs, jobs_with_updated_conditions = compare_jobs(jobs_target, jobs_ref)
 
-# Écrire un fichier JIL pour les jobs manquants
-output_jil_file = 'chemin/vers/jobs_manquants_et_dependances.jil'
-write_jil_file(missing_jobs, output_jil_file)
+# Écrire un fichier JIL pour les jobs manquants et les mises à jour de dépendances
+output_jil_file = 'chemin/vers/jobs_manquants_et_mises_a_jour.jil'
+write_jil_file(missing_jobs, jobs_with_updated_conditions, output_jil_file)
 
-print(f"Les jobs manquants avec leurs dépendances ont été écrits dans {output_jil_file}.")
+print(f"Les jobs manquants et les mises à jour de dépendances ont été écrits dans {output_jil_file}.")
