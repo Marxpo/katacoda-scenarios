@@ -1,11 +1,3 @@
-def normalize_job_name(job_name):
-    """ Normalise le nom du job en supprimant le préfixe spécifique à l'environnement. """
-    if job_name.startswith('job_ref'):
-        return job_name.replace('job_ref', '')
-    elif job_name.startswith('job_cible'):
-        return job_name.replace('job_cible', '')
-    return job_name
-
 def read_jil_file(file_path):
     """ Lit un fichier JIL et retourne une liste de jobs avec leurs détails. """
     jobs = {}
@@ -15,52 +7,43 @@ def read_jil_file(file_path):
         for line in file:
             if line.startswith('insert_job'):
                 if current_job:
-                    jobs[normalize_job_name(current_job)] = job_content
+                    jobs[current_job] = job_content
                 job_name = line.split()[1]
                 current_job = job_name
                 job_content = line
             elif current_job:
                 job_content += line
         if current_job:
-            jobs[normalize_job_name(current_job)] = job_content
+            jobs[current_job] = job_content
     return jobs
 
-def compare_jobs(jobs1, jobs2):
-    """ Compare deux ensembles de jobs et retourne les jobs manquants dans jobs1 avec leurs dépendances. """
+def find_missing_jobs_with_conditions(jobs1, jobs2):
+    """ Trouve les jobs présents dans jobs2 et leurs conditions, mais absents dans jobs1. """
     missing_jobs = {}
     for job, content in jobs2.items():
         if job not in jobs1:
             missing_jobs[job] = content
-            # Ajouter également les dépendances des jobs manquants
-            if 'condition' in content:
-                for line in content.split('\n'):
-                    if 'condition' in line:
-                        dependencies = line.split(':')[1].split()
-                        for dep in dependencies:
-                            normalized_dep = normalize_job_name(dep)
-                            if normalized_dep in jobs2 and normalized_dep not in missing_jobs:
-                                missing_jobs[normalized_dep] = jobs2[normalized_dep]
     return missing_jobs
 
 def write_jil_file(missing_jobs, output_file):
-    """ Écrit les jobs manquants et leurs dépendances dans un fichier JIL. """
+    """ Écrit les jobs manquants et leurs conditions dans un fichier JIL. """
     with open(output_file, 'w') as file:
         for job, content in missing_jobs.items():
             file.write(content + "\n\n")
 
 # Chemins vers vos fichiers JIL
-jil_file_job_cible = 'chemin/vers/job_cible.jil'
-jil_file_job_ref = 'chemin/vers/job_ref.jil'
+jil_file_target = 'chemin/vers/target.jil'
+jil_file_ref = 'chemin/vers/ref.jil'
 
 # Lire les fichiers JIL
-jobs_job_cible = read_jil_file(jil_file_job_cible)
-jobs_job_ref = read_jil_file(jil_file_job_ref)
+jobs_target = read_jil_file(jil_file_target)
+jobs_ref = read_jil_file(jil_file_ref)
 
-# Trouver les jobs manquants dans job_cible avec leurs dépendances
-missing_jobs = compare_jobs(jobs_job_cible, jobs_job_ref)
+# Trouver les jobs présents dans ref et leurs conditions, mais absents dans target
+missing_jobs = find_missing_jobs_with_conditions(jobs_target, jobs_ref)
 
 # Écrire un fichier JIL pour les jobs manquants
-output_jil_file = 'chemin/vers/jobs_manquants_et_dependances.jil'
+output_jil_file = 'chemin/vers/jobs_manquants_et_leurs_conditions.jil'
 write_jil_file(missing_jobs, output_jil_file)
 
-print(f"Les jobs manquants avec leurs dépendances ont été écrits dans {output_jil_file}.")
+print(f"Les jobs existants dans ref avec leurs conditions, mais absents dans target, ont été écrits dans {output_jil_file}.")
