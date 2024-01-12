@@ -1,49 +1,29 @@
-def read_jil_file(file_path):
-    """ Lit un fichier JIL et retourne une liste de jobs avec leurs détails. """
-    jobs = {}
+def read_job_names(file_path):
+    """ Lit un fichier JIL et retourne les noms des jobs. """
+    job_names = set()
     with open(file_path, 'r') as file:
-        current_job = None
-        job_content = ""
         for line in file:
             if line.startswith('insert_job'):
-                if current_job:
-                    jobs[current_job] = job_content
                 job_name = line.split()[1]
-                current_job = job_name
-                job_content = line
-            elif current_job:
-                job_content += line
-        if current_job:
-            jobs[current_job] = job_content
-    return jobs
+                job_names.add(job_name)
+    return job_names
 
-def find_missing_jobs_with_conditions(jobs1, jobs2):
-    """ Trouve les jobs présents dans jobs2 et leurs conditions, mais absents dans jobs1. """
-    missing_jobs = {}
-    for job, content in jobs2.items():
-        if job not in jobs1:
-            missing_jobs[job] = content
-    return missing_jobs
-
-def write_jil_file(missing_jobs, output_file):
-    """ Écrit les jobs manquants et leurs conditions dans un fichier JIL. """
-    with open(output_file, 'w') as file:
-        for job, content in missing_jobs.items():
-            file.write(content + "\n\n")
+def find_missing_jobs(jobs1, jobs2):
+    """ Trouve les jobs qui sont dans jobs2 mais pas dans jobs1. """
+    return jobs2 - jobs1
 
 # Chemins vers vos fichiers JIL
 jil_file_target = 'chemin/vers/target.jil'
 jil_file_ref = 'chemin/vers/ref.jil'
 
-# Lire les fichiers JIL
-jobs_target = read_jil_file(jil_file_target)
-jobs_ref = read_jil_file(jil_file_ref)
+# Lire les noms des jobs des fichiers JIL
+jobs_target = read_job_names(jil_file_target)
+jobs_ref = read_job_names(jil_file_ref)
 
-# Trouver les jobs présents dans ref et leurs conditions, mais absents dans target
-missing_jobs = find_missing_jobs_with_conditions(jobs_target, jobs_ref)
+# Trouver les jobs présents dans ref mais absents dans target
+missing_jobs = find_missing_jobs(jobs_target, jobs_ref)
 
-# Écrire un fichier JIL pour les jobs manquants
-output_jil_file = 'chemin/vers/jobs_manquants_et_leurs_conditions.jil'
-write_jil_file(missing_jobs, output_jil_file)
-
-print(f"Les jobs existants dans ref avec leurs conditions, mais absents dans target, ont été écrits dans {output_jil_file}.")
+# Afficher les jobs manquants
+print("Jobs présents dans ref et absents dans target:")
+for job in missing_jobs:
+    print(job)
